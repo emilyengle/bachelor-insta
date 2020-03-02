@@ -49,6 +49,9 @@ def get_follower_counts(urls):
     search_string = '"edge_followed_by":{"count":'
     for url in urls:
         response = requests.get(url)
+        if response.status_code != 200:
+            count.append('Not Found')
+            continue
         index1 = response.text.find(search_string) + len(search_string)
         index2 = response.text.find('}', index1)
         follower_count = response.text[index1:index2]
