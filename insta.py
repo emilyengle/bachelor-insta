@@ -13,6 +13,7 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 # TO USE - fill in below with the correct spreadsheet ID
 SPREADSHEET_ID = '1SyyRQQoWYEO74uSPehFiURmuR7wrWmlzaIBMjp6VY6c'
 
+
 def get_creds():
     creds = None
     # The file token.pickle stores the user's access and refresh tokens, and is
@@ -38,7 +39,7 @@ def get_creds():
 def get_urls(ss):
     # TO USE - replace "Sheet1" below with the name of the specific sheet in
     # the given spreadsheet
-    range = 'Sheet1!B2:AG2'
+    range = 'Sheet1!B2:HX2'
     raw_data = ss.values().get(spreadsheetId=SPREADSHEET_ID, range=range).execute()
     values = raw_data.get('values', [[]])
     return values[0]
@@ -47,15 +48,19 @@ def get_urls(ss):
 def get_follower_counts(urls):
     count = []
     search_string = '"edge_followed_by":{"count":'
-    for url in urls:
+    for index, url in enumerate(urls):
         response = requests.get(url)
         if response.status_code != 200:
             count.append('Not Found')
             continue
         index1 = response.text.find(search_string) + len(search_string)
+        if (index1 == 27):
+            count.append('Not Found')
+            continue
         index2 = response.text.find('}', index1)
         follower_count = response.text[index1:index2]
         count.append(follower_count)
+        print_progress_bar(index, len(urls) - 1)
     return count
 
 
@@ -64,6 +69,19 @@ def get_row(follower_counts):
     row = [today]
     row.extend(follower_counts)
     return row
+
+
+def print_progress_bar(iteration, total, fill='█', printEnd="\r"):
+    decimals = 1
+    length = 100
+
+    percent = ("{0:." + str(decimals) + "f}").format(100 *
+                                                     (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print('\rProgress: |%s| %s%% Complete' % (bar, percent), end=printEnd)
+    if iteration == total:
+        print('\n')
 
 
 def main():
@@ -75,9 +93,11 @@ def main():
     # Fetch the instagram handles to check from the spreadsheet
     urls = get_urls(spreadsheets)
     # Get the follower count for each handle
+    print('Getting data...')
     follower_counts = get_follower_counts(urls)
 
     # Combine all of the data into a row to write to the spreadsheet
+    print('Writing to sheet...')
     row = get_row(follower_counts)
     body = {
         'values': [row]
@@ -89,6 +109,7 @@ def main():
     service.spreadsheets().values().append(
         spreadsheetId=SPREADSHEET_ID, range='Sheet1',
         valueInputOption='USER_ENTERED', body=body).execute()
+    print('Done')
 
 
 if __name__ == '__main__':
